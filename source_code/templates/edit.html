@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>İşlem Düzenle</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+    integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200px 0;
+      }
+
+      100% {
+        background-position: calc(200px + 100%) 0;
+      }
+    }
+
+    .shimmer {
+      background: linear-gradient(90deg,
+          #1e293b 25%,
+          #334155 50%,
+          #1e293b 75%);
+      background-size: 200px 100%;
+      animation: shimmer 1.5s infinite;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-2xl bg-slate-800 rounded-2xl shadow-2xl p-6">
+    <header class="mb-6">
+      <h1 class="text-2xl font-semibold">İşlem Düzenle</h1>
+      <p class="text-sm text-slate-400">İşlemi düzenleyip kaydedin veya iptal edin.</p>
+    </header>
+    <main>
+      <form id="editForm" class="space-y-4">
+        <input type="hidden" id="taskId" value="{{ task_id }}" />
+
+        <div>
+          <label class="block text-sm mb-1">İşlem Adı</label>
+          <input id="name" type="text" placeholder="İşlem Adı"
+            class="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm mb-1">İşlem Aralığı</label>
+          <input id="interval" type="number" step="1" min="1" placeholder="İşlem aralığını yazın (saat)"
+            class="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-700 focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div class="py-6">
+          <label class="block text-sm mb-2">Kısayollar</label>
+          <hr class="border-slate-700 mb-3">
+          <div class="flex gap-3 justify-center flex-wrap md:flex-nowrap md:justify-around items-center">
+            <button
+              class="w-22 px-4 py-2 rounded-lg bg-indigo-600 transition-all duration-300 hover:bg-indigo-700 text-white font-semibold"
+              onclick="set_interval(120)" type="button">5
+              Gün</button>
+            <button
+              class="w-22 px-4 py-2 rounded-lg bg-indigo-600 transition-all duration-300 hover:bg-indigo-700 text-white font-semibold"
+              onclick="set_interval(168)" type="button">1
+              Hafta</button>
+            <button
+              class="w-22 px-4 py-2 rounded-lg bg-indigo-600 transition-all duration-300 hover:bg-indigo-700 text-white font-semibold"
+              onclick="set_interval(336)" type="button">2
+              Hafta</button>
+            <button
+              class="w-22 px-4 py-2 rounded-lg bg-indigo-600 transition-all duration-300 hover:bg-indigo-700 text-white font-semibold"
+              onclick="set_interval(720)" type="button">30 Gün</button>
+            <button
+              class="w-22 px-4 py-2 rounded-lg bg-indigo-600 transition-all duration-300 hover:bg-indigo-700 text-white font-semibold"
+              onclick="set_interval(2160)" type="button">90 Gün</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm mb-1 text-slate-300">Silinecek Klasörler</label>
+          <div class="grid grid-cols-2 gap-3 mt-2">
+            <label
+              class="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition cursor-pointer shadow-sm border-2 border-gray-600/25">
+              <input type="checkbox" value="temp" class="peer hidden folder-checkbox" />
+              <div
+                class="w-5 h-5 flex items-center justify-center border-2 border-slate-400 rounded-md peer-checked: peer-checked:border-blue-600 transition">
+                <i
+                  class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+              </div>
+              <span class="text-slate-200 font-medium select-none">Temp</span>
+            </label>
+
+            <label
+              class="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition cursor-pointer shadow-sm border-2 border-gray-600/25">
+              <input type="checkbox" value="local_temp" class="peer hidden folder-checkbox" />
+              <div
+                class="w-5 h-5 flex items-center justify-center border-2 border-slate-400 rounded-md peer-checked: peer-checked:border-blue-600 transition">
+                <i
+                  class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+              </div>
+              <span class="text-slate-200 font-medium select-none">Local Temp</span>
+            </label>
+
+            <label
+              class="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition cursor-pointer shadow-sm border-2 border-gray-600/25">
+              <input type="checkbox" value="prefetch" class="peer hidden folder-checkbox" />
+              <div
+                class="w-5 h-5 flex items-center justify-center border-2 border-slate-400 rounded-md peer-checked: peer-checked:border-blue-600 transition">
+                <i
+                  class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+              </div>
+              <span class="text-slate-200 font-medium select-none">Prefetch</span>
+            </label>
+
+            <label
+              class="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition cursor-pointer shadow-sm border-2 border-gray-600/25">
+              <input type="checkbox" value="recents" class="peer hidden folder-checkbox" />
+              <div
+                class="w-5 h-5 flex items-center justify-center border-2 border-slate-400 rounded-md peer-checked: peer-checked:border-blue-600 transition">
+                <i
+                  class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+              </div>
+              <span class="text-slate-200 font-medium select-none">Recents</span>
+            </label>
+
+            <label
+              class="flex items-center gap-3 p-3.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition cursor-pointer shadow-sm mt-6 border-2 border-gray-600/25">
+              <input id="active" type="checkbox" class="peer hidden" />
+              <div
+                class="w-5 h-5 flex items-center justify-center border-2 border-slate-400 rounded-md peer-checked:border-blue-600 transition">
+                <i
+                  class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+              </div>
+              <span class="text-sm text-slate-200 font-medium select-none">Aktif</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 mt-6">
+          <a href="/"
+            class="px-4 py-2 rounded-lg bg-slate-700 transition-all duration-300 hover:bg-slate-600 text-slate-200">İptal</a>
+          <button type="submit"
+            class="px-4 py-2 rounded-lg bg-indigo-700 transition-all duration-300 hover:bg-indigo-600 text-white font-semibold">
+            Kaydet
+          </button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="alertModal"
+    class="fixed inset-0 bg-[#00000075] flex items-center justify-center transition-opacity opacity-0 pointer-events-none">
+    <div class="bg-slate-800 rounded-lg p-6 max-w-sm w-full text-center shadow-lg">
+      <p id="alertMessage" class="mb-4 text-white text-lg"></p>
+      <button id="closeModal" class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-500 text-white font-semibold">
+        Tamam
+      </button>
+    </div>
+  </div>
+
+  <div id="loadingOverlay"
+    class="fixed inset-0 bg-[#00000075] transition-opacity pointer-events-default flex items-center justify-center z-50">
+    <div class="bg-surface rounded-lg p-8 flex flex-col items-center space-y-4">
+      <div class="spinner text-4xl text-primary">
+        <i class="fas fa-cog"></i>
+      </div>
+      <p class="text-secondary">İşlemler yükleniyor...</p>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://127.0.0.1:5000/api";
+    const taskId = document.getElementById("taskId").value;
+
+    function set_interval(hours) {
+      document.getElementById("interval").value = hours;
+    }
+
+    function showModal(message, onClose = null) {
+      const modal = document.getElementById("alertModal");
+      const alertMessage = document.getElementById("alertMessage");
+
+      alertMessage.textContent = message;
+      modal.classList.remove("opacity-0", "pointer-events-none");
+
+      const btn = document.getElementById("closeModal");
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.onclick = () => {
+        modal.classList.add("opacity-0", "pointer-events-none");
+        if (onClose) onClose();
+      };
+    }
+
+    //loading
+    function showLoading() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        loadingOverlay.style.opacity = '1';
+        loadingOverlay.style.pointerEvents = 'default';
+      }
+    }
+
+    function hideLoading() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.opacity = '0';
+        loadingOverlay.style.pointerEvents = 'none';
+        setTimeout(() => loadingOverlay.style.display = 'none', 300);
+      }
+    }
+    //end loading
+
+    async function loadTask() {
+      showLoading();
+      const res = await fetch(`${API}/tasks`);
+      const tasks = await res.json();
+      const t = tasks.find((x) => x.id === taskId);
+      if (!t) {
+        showModal("İşlem bulunamadı", () => (location.href = "/"));
+        hideLoading();
+        return;
+      }
+      document.getElementById("name").value = t.name;
+      document.getElementById("interval").value = t.interval_hours;
+      document.getElementById("active").checked = t.active;
+      document.querySelectorAll(".folder-checkbox").forEach((cb) => {
+        cb.checked = t.folders.includes(cb.value);
+      });
+      hideLoading();
+    }
+
+    document
+      .getElementById("editForm")
+    document
+      .getElementById("editForm")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById("name").value.trim();
+        const interval = parseFloat(document.getElementById("interval").value);
+        const active = document.getElementById("active").checked;
+        const folders = Array.from(
+          document.querySelectorAll(".folder-checkbox")
+        )
+          .filter((i) => i.checked)
+          .map((i) => i.value);
+
+        if (!folders.length) {
+          showModal("En az bir klasör seçin");
+          return;
+        }
+        if (interval > 2160) {
+          showModal("Geçerli bir işlem aralığı girin (1-2160)");
+          return;
+        }
+        showLoading();
+        const payload = { name, interval_hours: interval, active, folders };
+
+        const res = await fetch(`${API}/tasks/${taskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (data.status === "duplicate") {
+          hideLoading();
+          showModal(data.message);
+          return;
+        } else if (res.ok) {
+          hideLoading();
+          showModal("İşlem başarıyla güncelleştirildi.", () => {
+            location.href = "/";
+          });
+        } else {
+          hideLoading();
+          showModal("Güncelleme sırasında hata oluştu");
+          return;
+        }
+
+      });
+
+
+    loadTask();
+  </script>
+
+</body>
+
+</html>

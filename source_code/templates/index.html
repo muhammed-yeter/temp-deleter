@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Temp Deleter</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-variant: #273449;
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --primary: #6366f1;
+      --primary-dark: #3832b6;
+      --secondary: #339b14;
+      --secondary-dark: #06b6d4;
+      --error: #f87171;
+      --error-dark: #ef4444;
+      --info: #787af7;
+      --info-dark: #8789f1;
+    }
+
+    .bg-loadingbar {
+      background: linear-gradient(to right, var(--info), var(--primary-dark));
+    }
+
+    body {
+      font-family: "Urbanist", sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+    }
+
+    .bg-surface {
+      background-color: var(--surface) !important;
+    }
+
+    .bg-surface-variant {
+      background-color: var(--surface-variant) !important;
+    }
+
+    .text-secondary {
+      color: var(--text-secondary) !important;
+    }
+
+    .text-primary {
+      color: var(--text-primary) !important;
+    }
+
+    .bg-primary {
+      background-color: var(--primary) !important;
+    }
+
+    .hover\:bg-primary-dark:hover {
+      background-color: var(--primary-dark) !important;
+    }
+
+    .bg-secondary {
+      background-color: var(--secondary) !important;
+    }
+
+    .hover\:bg-secondary-dark:hover {
+      background-color: var(--secondary-dark) !important;
+    }
+
+    .bg-error {
+      background-color: var(--error) !important;
+    }
+
+    .hover\:bg-error-dark:hover {
+      background-color: var(--error-dark) !important;
+    }
+
+    .bg-info {
+      background-color: var(--info) !important;
+    }
+
+    .hover\:bg-info-dark:hover {
+      background-color: var(--info-dark) !important;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200px 0;
+      }
+
+      100% {
+        background-position: calc(200px + 100%) 0;
+      }
+    }
+
+    .shimmer {
+      background: linear-gradient(90deg,
+          var(--surface-variant) 25%,
+          var(--surface) 50%,
+          var(--surface-variant) 75%);
+      background-size: 200px 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes progressPulse {
+      0% {
+        opacity: 0.6;
+      }
+
+      50% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0.6;
+      }
+    }
+
+    .progress-loading {
+      animation: progressPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    .task-card-loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+
+    @media (max-width:850px) {
+      .col-1 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body class="p-6 min-h-screen">
+  <!-- loading ui -->
+  <div id="loadingOverlay"
+    class="fixed inset-0 bg-[#00000075] transition-opacity pointer-events-default flex items-center justify-center z-50">
+    <div class="bg-surface rounded-lg p-8 flex flex-col items-center space-y-4">
+      <div class="spinner text-4xl text-primary">
+        <i class="fas fa-cog"></i>
+      </div>
+      <p class="text-secondary">İşlemler yükleniyor...</p>
+    </div>
+  </div>
+
+  <div class="max-w-6xl mx-auto">
+    <!-- header -->
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-secondary">İşlemler</h1>
+      <a href="/create" class="bg-primary hover:bg-primary-dark text-primary
+               px-5 py-2 rounded-lg font-semibold
+               transition-all duration-300
+               shadow-lg">
+        Yeni İşlem
+      </a>
+    </div>
+
+    <!-- task list -->
+    <div id="taskList" class="grid gap-6 col-1 md:grid-cols-2 xl:grid-cols-3">
+      <!-- loading placeholder -->
+      <div id="loadingPlaceholder" class="col-span-full flex justify-center py-12">
+        <h2 class="text-gray-300">Hiç işleminiz yok. yeni bir tane oluşturun.</h2>
+      </div>
+    </div>
+
+
+    <!-- delete modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/60 flex items-center justify-center
+             opacity-0 pointer-events-none transition-opacity duration-200 z-50">
+      <div class="bg-surface-variant rounded-xl shadow-lg p-6 w-full max-w-md">
+        <h2 class="text-xl font-semibold mb-4 text-primary">İşlemi Sil</h2>
+        <p class="mb-6 text-secondary">Bu İşlemi silmek istediğinize emin misiniz?</p>
+        <div class="flex justify-end space-x-4">
+          <button onclick="closeDeleteModal()" class="px-4 py-2 bg-surface hover:bg-surface-variant
+                   text-primary rounded-lg transition duration-200">
+            İptal
+          </button>
+          <button onclick="confirmDelete()" class="px-4 py-2 bg-error hover:bg-error-dark
+                   text-primary rounded-lg transition duration-200">
+            Evet, Sil
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification-container" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+
+  <!-- progressbar -->
+  <div id="progressLogger" class="fixed bottom-6 left-6 w-80 max-h-1/2
+           bg-surface-variant rounded-lg p-4 shadow-lg
+           opacity-0 pointer-events-none
+           transition-opacity duration-300 z-50 flex flex-col">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="text-lg font-medium text-primary">Temizleme Durumu</h3>
+      <button id="closeLoggerBtn" class="text-secondary hover:text-primary transition duration-200" title="Kapat">
+        &times;
+      </button>
+    </div>
+    <div id="loggerBars" class="space-y-4 overflow-y-auto"></div>
+  </div>
+
+  <script>
+    const API = "http://127.0.0.1:5000/api";
+    let tasks = [];
+    const pollingIntervals = {};
+
+    const logger = document.getElementById("progressLogger");
+    const loggerBars = document.getElementById("loggerBars");
+    const closeBtn = document.getElementById("closeLoggerBtn");
+
+    function showLogger() {
+      logger.classList.remove("opacity-0", "pointer-events-none");
+      logger.classList.add("opacity-100", "pointer-events-auto");
+    }
+    function hideLogger() {
+      logger.classList.remove("opacity-100", "pointer-events-auto");
+      logger.classList.add("opacity-0", "pointer-events-none");
+    }
+
+    closeBtn.addEventListener("click", hideLogger);
+
+    async function pollTaskProgress(taskId) {
+      // eğer zaten işlem yapılıyorsa geri döner
+      if (pollingIntervals[taskId]) return;
+
+      loggerBars.innerHTML = "";
+      showLogger();
+
+      async function fetchAndRender() {
+        try {
+          const res = await fetch(`${API}/tasks/${taskId}/status`);
+          if (!res.ok) throw new Error("Status fetch failed");
+
+          const data = await res.json();
+          const folders = data.progress?.folders || {};
+          loggerBars.innerHTML = "";
+
+          Object.entries(folders).forEach(([folder, prog]) => {
+            const total = Number(prog.total) || 0;
+            const current = Number(prog.current) || 0;
+            const percent =
+              total > 0
+                ? Math.floor((current / total) * 100)
+                : total === 0 && current === 0
+                  ? 0
+                  : 100;
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "space-y-1";
+
+            const label = document.createElement("div");
+            label.className = "flex justify-between text-sm text-secondary";
+            label.innerHTML = `<span>${folder}</span><span>${percent}%</span>`;
+
+            const barTrack = document.createElement("div");
+            barTrack.className = "w-full bg-surface rounded h-2 overflow-hidden";
+
+            const innerBar = document.createElement("div");
+            innerBar.className = `h-full bg-loadingbar transition-all duration-500 ease-out ${percent === 0 ? 'progress-loading' : ''}`;
+            innerBar.style.width = `${percent}%`;
+
+            barTrack.appendChild(innerBar);
+
+            const info = document.createElement("p");
+            info.className = "text-xs text-secondary";
+            info.textContent = `${current} / ${total} dosya temizlendi`;
+
+            wrapper.append(label, barTrack, info);
+            loggerBars.appendChild(wrapper);
+          });
+
+          const allDoneByFolders = Object.values(folders).length > 0 &&
+            Object.values(folders).every((p) => {
+              const cur = Number(p.current) || 0;
+              const tot = Number(p.total) || 0;
+              return tot > 0 && cur >= tot;
+            });
+
+          const progressMeta = data.progress || {};
+          const serverSaysDone = progressMeta.done === true;
+          const allDone = allDoneByFolders || serverSaysDone;
+
+          if (allDone) {
+            clearInterval(pollingIntervals[taskId]);
+            delete pollingIntervals[taskId];
+
+            setTimeout(() => {
+              fetchTasks().then(hideLogger);
+            }, 1200);
+          }
+        } catch (err) {
+          if (pollingIntervals[taskId]) {
+            clearInterval(pollingIntervals[taskId]);
+            delete pollingIntervals[taskId];
+          }
+          loggerBars.innerHTML =
+            "<p class='text-error text-sm'>İlerleme alınamadı.</p>";
+          setTimeout(hideLogger, 2000);
+          showNotification("Silmede hata oldu:");
+        }
+      }
+
+      await fetchAndRender();
+      pollingIntervals[taskId] = setInterval(fetchAndRender, 800);
+    }
+
+    // işlem çekme
+    async function fetchTasks(forceUpdateIds = []) {
+      try {
+        const res = await fetch(`${API}/tasks`);
+        const newTasks = await res.json();
+
+        // Önceki görevlerle karşılaştır
+        const hasChanges = tasks.length !== newTasks.length ||
+          newTasks.some((t, i) => {
+            const old = tasks.find(oldT => oldT.id === t.id);
+            return !old || JSON.stringify(old) !== JSON.stringify(t) || forceUpdateIds.includes(t.id);
+          });
+
+        tasks = newTasks;
+
+        // değişiklik yoksa yeniden render yapmaz.
+        if (hasChanges) {
+          showLoading()
+          renderTasks();
+          updateCountdowns();
+        }
+
+        tasks.forEach(t => {
+          const prog = t.progress;
+          if (prog && prog.done === false && !pollingIntervals[t.id]) {
+            pollTaskProgress(t.id);
+          }
+
+          if (t.active && t.next_run) {
+            const nextRun = new Date(t.next_run);
+            if (nextRun <= new Date() && !pollingIntervals[t.id]) {
+              pollTaskProgress(t.id);
+            }
+          }
+        });
+
+        hideLoading();
+
+      } catch (err) {
+        console.error("Görevler çekilirken bir hata oluştu:", err);
+      }
+    }
+
+    function showNotification(message) {
+      const toast = document.createElement("div");
+      const baseStyle =
+        "flex items-center p-3 text-sm rounded-lg shadow-lg transition-opacity duration-300";
+
+      //stiller kolaylıkla okunsun diye 2 parçaya ayrıldı
+      const typeStyle = "bg-error text-primary border border-error"
+      toast.className = `${baseStyle} ${typeStyle}`;
+      toast.textContent = message;
+      document.getElementById("notification-container").appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add("opacity-0");
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+
+    function parseISOorNull(s) {
+      if (!s) return null;
+      const ts = Date.parse(s);
+      return Number.isNaN(ts) ? null : new Date(ts);
+    }
+
+    function computeNextRunClientSide(t) {
+      if (!t.active) return null;
+
+      const minutes = t.interval_minutes != null
+        ? Number(t.interval_minutes)
+        : (t.interval_hours != null ? Number(t.interval_hours) * 60 : null);
+
+      if (minutes == null || Number.isNaN(minutes)) return null;
+
+      let next = parseISOorNull(t.next_run);
+
+      if (!next && t.active) {
+        next = new Date(Date.now() + minutes * 60 * 1000);
+      }
+
+      return next;
+    }
+
+
+    function msToHMS(ms) {
+      if (ms <= 0) return "00:00:00";
+      let s = Math.floor(ms / 1000);
+      const h = Math.floor(s / 3600);
+      s %= 3600;
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+    }
+
+    function formatCompact(ms) {
+      if (ms <= 0) return "00:00:00";
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    function formatDetailed(ms) {
+      if (ms <= 0) return "0 gün 0 saat 0 dakika";
+      const totalMinutes = Math.floor(ms / 60000);
+      const days = Math.floor(totalMinutes / 1440);
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+      let result = "";
+      if (days > 0) result += `${days} gün `;
+      if (hours > 0) result += `${hours} saat `;
+      if (minutes > 0) result += `${minutes} dakika`;
+      return result.trim();
+    }
+
+    // formatlama için
+    document.addEventListener("click", async function (e) {
+      if (e.target.classList.contains("countdown-toggle")) {
+        const el = e.target;
+        const ms = parseInt(el.dataset.ms, 10);
+        if (Number.isNaN(ms)) return;
+
+        const card = el.closest("[data-next-run]");
+        if (!card) return;
+
+        const currentFormat = el.dataset.format || "compact";
+        let newFormat;
+        if (currentFormat === "compact") {
+          el.textContent = formatDetailed(ms);
+          newFormat = "detailed";
+        } else {
+          el.textContent = formatCompact(ms);
+          newFormat = "compact";
+        }
+
+        el.dataset.format = newFormat;
+        card.dataset.displayFormat = newFormat;
+
+        const taskIdMatch = card.querySelector(`[id^="countdown_"]`)?.id.match(/countdown_(.+)/);
+        if (taskIdMatch) {
+          const taskId = taskIdMatch[1];
+          await save_countdown_preference(taskId, newFormat);
+        }
+      }
+    });
+
+
+
+    function renderTasks() {
+      const container = document.getElementById("taskList");
+      container.innerHTML = "";
+
+      if (!tasks.length) {
+        container.innerHTML = `
+      <div class="col-span-full text-center text-secondary text-lg">
+        Henüz işlem yok. Yeni işlem oluşturun.
+      </div>`;
+        return;
+      }
+
+      tasks.forEach((t, index) => {
+        const card = document.createElement("div");
+        card.className = `bg-surface rounded-xl shadow-md p-5 flex flex-col justify-between`;
+
+        // kalan sürenin hatalı olmaması için yeniden hesaplama yapar
+        const computedNextRun = computeNextRunClientSide(t);
+        const nextRunISO = computedNextRun ? computedNextRun.toISOString() : "";
+
+        let intervalLabel = "-";
+        let intervalMinutes = 0;
+
+        if (t.interval_hours != null) {
+          intervalLabel = `${t.interval_hours} saat`;
+          intervalMinutes = t.interval_hours * 60;
+        } else if (t.interval_minutes != null) {
+          intervalLabel = `${t.interval_minutes} dk`;
+          intervalMinutes = t.interval_minutes;
+        }
+
+        card.innerHTML = `
+  <div class="bg-surface rounded-xl shadow-md p-4 flex flex-col h-full min-h-0">
+    <!-- İçerik: büyüyen kısım -->
+    <div class="flex-1 flex flex-col gap-3 min-h-0">
+      <!-- Başlık ve durum -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h2 class="text-lg sm:text-xl font-bold text-primary break-words truncate">${t.name}</h2>
+        <span class="px-3 py-1 text-xs font-semibold rounded-full ${t.active
+            ? "bg-primary text-white"
+            : "bg-surface-variant text-secondary"
+          }">
+          ${t.active ? "Aktif" : "Pasif"}
+        </span>
+      </div>
+
+      <!-- Aralık -->
+      <p class="text-sm text-secondary">
+        Aralık: <span class="font-medium text-primary">${intervalLabel}</span>
+      </p>
+
+      <!-- Klasörler (kaydırılabilir, taşmayı önler) -->
+      <div>
+        <p class="text-sm text-secondary mb-1 font-medium">Klasörler:</p>
+        <ul class="space-y-1 max-h-40 overflow-auto pr-2">
+          ${t.folders && t.folders.length > 0
+            ? t.folders.map(f => `
+                <li class="flex items-center gap-2 px-3 py-1 bg-surface-variant rounded hover:bg-surface transition break-words">
+                  <span class="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                  <span class="text-sm text-secondary break-words">${f}</span>
+                </li>`).join("")
+            : `<li class="text-sm text-secondary">-</li>`
+          }
+        </ul>
+      </div>
+
+      <p class="text-xs text-secondary mt-2">
+        Son çalıştırma: ${t.last_run ? new Date(t.last_run).toLocaleString() : "-"}
+      </p>
+
+      <!-- Kalan süre -->
+      <p class="text-xs text-secondary">
+        <strong>Kalan süre:</strong> <span id="countdown_${t.id}" class="ml-2">-</span>
+      </p>
+    </div>
+
+    <!-- Footer: butonlar (her zaman kartın altında) -->
+    <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
+      <button
+        onclick="runNow('${t.id}')"
+        class="w-full sm:flex-1 flex items-center justify-center
+               bg-primary hover:bg-primary-dark
+               text-white text-sm font-medium
+               transition-all duration-200
+               px-4 py-2 rounded-lg shadow-sm"
+      >
+        <i class="fa-solid fa-circle-play mr-2"></i> Çalıştır
+      </button>
+
+      <button
+        onclick="editTask('${t.id}')"
+        class="w-full sm:flex-1 flex items-center justify-center
+           bg-primary hover:bg-primary-dark
+           text-white text-sm font-medium
+           transition-all duration-300  
+           px-5 py-2 rounded-lg shadow-lg"
+               
+      >
+        <i class="fas fa-edit mr-2"></i> Düzenle
+      </button>
+
+      <button
+        onclick="openDeleteModal('${t.id}')"
+        class="w-full sm:flex-1 flex items-center justify-center
+               bg-error hover:bg-error-dark
+               text-white text-sm font-medium
+               transition-all duration-200
+               px-4 py-2 rounded-lg shadow-sm"
+      >
+        <i class="fa-solid fa-trash mr-2"></i> Sil
+      </button>
+    </div>
+  </div>
+`;
+
+        card.dataset.active = t.active ? "true" : "false";
+        card.dataset.displayFormat = t.display_format || 'compact';
+        card.dataset.nextRun = t.active && nextRunISO ? nextRunISO : "";
+        card.dataset.intervalMinutes = intervalMinutes;
+
+        container.appendChild(card);
+      });
+
+      hideLoading()
+
+      updateCountdowns();
+    }
+
+    function editTask(id) {
+      window.location.href = `/edit/${id}`;
+    }
+
+
+    //loading
+    function showLoading() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        loadingOverlay.style.opacity = '1';
+        loadingOverlay.style.pointerEvents = 'default';
+      }
+    }
+
+    function hideLoading() {
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.opacity = '0';
+        loadingOverlay.style.pointerEvents = 'none';
+        setTimeout(() => loadingOverlay.style.display = 'none', 300);
+      }
+    }
+    //end loading
+
+    async function save_countdown_preference(taskId, format) {
+      try {
+        await fetch(`/api/tasks/${taskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ display_format: format })
+        });
+      } catch (err) {
+        showNotification("display_format kaydedilemedi");
+      }
+    }
+
+    async function runNow(id) {
+      if (pollingIntervals[id]) {
+        clearInterval(pollingIntervals[id]);
+        delete pollingIntervals[id];
+      }
+
+      //yükleme kısmı
+      const card = document.querySelector(`[data-id="${id}"]`) ||
+        document.querySelector(`#taskList > div:has([onclick*="${id}"])`);
+      if (card) {
+        card.classList.add('task-card-loading');
+      }
+
+      try {
+        const res = await fetch(`${API}/run/${id}`, { method: "POST" });
+        if (!res.ok) {
+          const text = await res.text().catch(() => null);
+          throw new Error(text || "İşlem çalıştırılamadı");
+        }
+        const data = await res.json();
+        pollTaskProgress(id);
+        fetchTasks();
+      } catch (err) {
+        console.error(err);
+        showNotification("Çalıştırma sırasında hata oluştu");
+      } finally {
+        if (card) {
+          card.classList.remove('task-card-loading');
+        }
+      }
+    }
+
+    let deleteId = null;
+    function openDeleteModal(id) {
+      deleteId = id;
+      document
+        .getElementById("deleteModal")
+        .classList.remove("opacity-0", "pointer-events-none");
+    }
+    function closeDeleteModal() {
+      deleteId = null;
+      document
+        .getElementById("deleteModal")
+        .classList.add("opacity-0", "pointer-events-none");
+    }
+    async function confirmDelete() {
+      if (!deleteId) return;
+      try {
+        await fetch(`${API}/tasks/${deleteId}`, { method: "DELETE" });
+        closeDeleteModal();
+        fetchTasks();
+      } catch (err) {
+        console.error("Silme işlemi başarısız:", err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", fetchTasks);
+    setInterval(fetchTasks, 3000);
+
+    function updateCountdowns() {
+      const cards = document.querySelectorAll("#taskList > div");
+      const nowTs = Date.now();
+
+      cards.forEach(card => {
+        const nextRunISO = card.dataset.nextRun || "";
+        const isActive = card.dataset.active === "true";
+        const intervalMinutes = Number(card.dataset.intervalMinutes) || 0;
+        const container = card.querySelector(`[id^="countdown_"]`);
+
+        if (!container) return;
+
+        if (!isActive) {
+          container.textContent = "Durduruldu";
+          return;
+        }
+
+        if (!nextRunISO || intervalMinutes === 0) {
+          container.textContent = "-";
+          return;
+        }
+
+        const nextTs = Date.parse(nextRunISO);
+        if (Number.isNaN(nextTs)) {
+          container.textContent = "-";
+          return;
+        }
+
+        const diff = nextTs - nowTs;
+
+        if (diff <= 0) {
+          container.textContent = "İşlemde";
+          return;
+        }
+
+        const savedFormat = card.dataset.displayFormat || 'compact';
+        let text;
+        if (savedFormat === "compact") {
+          text = formatCompact(diff);
+        } else {
+          text = formatDetailed(diff);
+        }
+
+        let btn = container.querySelector(".countdown-toggle");
+        if (!btn) {
+          btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "countdown-toggle text-primary hover:text-info transition-colors duration-200 underline-offset-4 hover:underline bg-transparent border-none cursor-pointer";
+          btn.dataset.format = savedFormat;
+          container.innerHTML = "";
+          container.appendChild(btn);
+        }
+        btn.dataset.ms = diff;
+        btn.textContent = text;
+      });
+    }
+
+
+    setInterval(updateCountdowns, 1000);
+  </script>
+</body>
+
+</html>
